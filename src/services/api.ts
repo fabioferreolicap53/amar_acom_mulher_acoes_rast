@@ -79,6 +79,7 @@ export const api = {
         // Se falhar (HTML/404), tenta o JSON estático na pasta public
         let response;
         try {
+            // Tentar API Functions primeiro
             response = await fetch(`/api/unidades?t=${Date.now()}`);
             const contentType = response.headers.get("content-type");
             
@@ -92,7 +93,8 @@ export const api = {
         } catch (apiError) {
             console.warn('API Function indisponível, tentando fallback estático...', apiError);
             // Fallback para arquivo estático em public/api/unidades.json
-            response = await fetch(`/api/unidades.json?t=${Date.now()}`);
+            // Remover timestamp para aproveitar cache do CDN/Navegador se necessário, ou manter se quiser fresh
+            response = await fetch('/api/unidades.json');
         }
 
         if (!response.ok) {
