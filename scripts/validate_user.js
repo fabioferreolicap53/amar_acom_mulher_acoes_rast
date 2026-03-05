@@ -29,17 +29,16 @@ async function main() {
     const usersCollectionName = `${PREFIX}usuarios`;
     const usersCollection = await pb.collections.getOne(usersCollectionName);
     
-    // 1. Desabilitar verificação de e-mail obrigatória
+    // 1. Habilitar autenticação por e-mail e senha
     console.log(`⚙️ Configurando coleção ${usersCollectionName}...`);
     await pb.collections.update(usersCollection.id, {
         options: {
-            allowEmailAuth: true,
+            allowEmailAuth: true, // Habilita login por email/senha
             allowOAuth2Auth: true,
             allowUsernameAuth: false,
             exceptEmailDomains: [],
             onlyEmailDomains: [],
             minPasswordLength: 8,
-            // Importante: garantir que verificação não impeça login se o servidor SMTP não estiver configurado
             manageEmailChange: true,
             requireEmail: true
         }

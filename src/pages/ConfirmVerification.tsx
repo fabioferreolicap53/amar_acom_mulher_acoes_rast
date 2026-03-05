@@ -26,7 +26,14 @@ const ConfirmVerification = () => {
       } catch (err: any) {
         console.error('Erro na confirmação:', err);
         setStatus('error');
-        setErrorMessage(translateError(err) || 'Este link de verificação é inválido, expirou ou já foi utilizado.');
+        
+        // Tentar extrair mensagem mais específica se possível
+        const msg = translateError(err);
+        if (msg.includes('inválido') || msg.includes('expirou')) {
+             setErrorMessage('Este link de verificação é inválido ou já foi utilizado. Tente fazer login.');
+        } else {
+             setErrorMessage(msg || 'Ocorreu um erro ao verificar seu e-mail.');
+        }
       }
     };
 
