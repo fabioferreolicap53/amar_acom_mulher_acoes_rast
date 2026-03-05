@@ -12,7 +12,8 @@ async function main() {
   
   // URL local para desenvolvimento (Vite padrão)
   // Em produção, deve ser a URL do seu domínio (ex: https://amar-acom-mulher.pages.dev)
-  const appUrl = 'http://localhost:5173';
+  // Atualizado para a URL de produção conforme solicitado
+  const appUrl = 'https://amar-cap53.pages.dev';
 
   try {
     console.log('🔐 Autenticando como Admin...');

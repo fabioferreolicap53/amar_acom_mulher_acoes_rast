@@ -15,7 +15,11 @@ const VerificationGateway = () => {
       name: 'AMAR - Acompanhamento da Mulher',
       // Em dev: localhost, em prod: a URL do seu site
       // Usa Query Param: /confirm-verification?token=XYZ
-      urlBuilder: (token: string) => `${window.location.origin}/confirm-verification?token=${token}`
+      urlBuilder: (token: string) => {
+        // Usa a URL atual como base se estivermos no mesmo domínio, ou força a URL de produção se for redirecionamento cruzado
+        // Como o Gateway roda no próprio AMAR, window.location.origin é seguro para manter o contexto (dev/prod)
+        return `${window.location.origin}/confirm-verification?token=${token}`;
+      }
     },
     // Adicione aqui o ID da coleção da Agenda Cap 5.3 se for diferente
     'j3sajam11bwd8ow': {
