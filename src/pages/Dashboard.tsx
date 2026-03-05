@@ -1,23 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { api } from '../services/api';
 
 const Dashboard = () => {
-  const stats = [
-    { title: 'Total Pacientes', value: '1,284', change: '+12%', icon: 'group', color: 'blue' },
-    { title: 'Exames Realizados', value: '843', change: '+5%', icon: 'check_circle', color: 'green' },
-    { title: 'Pendentes', value: '42', change: '-2%', icon: 'pending', color: 'yellow' },
-    { title: 'Resultados Críticos', value: '15', change: '+3', icon: 'warning', color: 'red' },
-  ];
+  const [stats, setStats] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const data = [
-    { name: 'Unidade Central', value: 400 },
-    { name: 'Zona Norte', value: 300 },
-    { name: 'Zona Sul', value: 200 },
-    { name: 'Zona Leste', value: 278 },
-    { name: 'Zona Oeste', value: 189 },
-  ];
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await api.dashboard.getStats();
+        setStats(data.stats);
+        setChartData(data.chartData);
+      } catch (error) {
+        console.error('Erro ao carregar dashboard', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+  if (loading) {
+     return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
+  }
+
 
   return (
     <div className="space-y-6">
@@ -65,7 +75,7 @@ const Dashboard = () => {
           </div>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
@@ -74,7 +84,7 @@ const Dashboard = () => {
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-                  {data.map((entry, index) => (
+                  {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                   ))}
                 </Bar>

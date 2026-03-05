@@ -4,7 +4,8 @@ dist/
 coverage/
 .DS_Store
 *.log
-.env*
-!.env.example
-.env*
 .env
+.dev.vars
+.wrangler/
+.wrangler_home/
+.config/

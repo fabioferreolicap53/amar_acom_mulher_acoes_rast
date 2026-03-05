@@ -1,18 +1,22 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
 import clsx from 'clsx';
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
+  const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = () => {
+    api.auth.logout();
+    navigate('/login');
   };
 
   const menuItems = [
-    { icon: 'dashboard', label: 'Dashboard', path: '/' },
+    { icon: 'dashboard', label: 'Painel', path: '/' },
     { icon: 'group', label: 'Pacientes', path: '/pacientes' },
-    { icon: 'calendar_today', label: 'Agenda', path: '/agenda' },
     { icon: 'bar_chart', label: 'Relatórios', path: '/relatorios' },
     { icon: 'settings', label: 'Configurações', path: '/configuracoes' },
   ];
@@ -67,7 +71,10 @@ const Sidebar = () => {
           </div>
         </div>
         
-        <button className="w-full mt-4 flex items-center gap-2 text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-sm">
+        <button 
+          onClick={handleLogout}
+          className="w-full mt-4 flex items-center gap-2 text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-white/5 transition-colors text-sm"
+        >
           <span className="material-symbols-outlined text-lg">logout</span>
           <span>Sair do Sistema</span>
         </button>

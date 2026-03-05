@@ -1,13 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import type { Patient, Exam } from '../types';
 
 interface PatientEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  patient: any;
+  patient: Patient | null;
 }
 
 const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, patient }) => {
   const [activeTab, setActiveTab] = useState('exams');
+  const [recentExams, setRecentExams] = useState<Exam[]>([]);
+  const [loadingExams, setLoadingExams] = useState(false);
+  const [newExam, setNewExam] = useState({ tipo: '', data: '', obs: '' });
+  const [isAdding, setIsAdding] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && patient?.id) {
+        loadRecentExams();
+    }
+  }, [isOpen, patient]);
+
+  const loadRecentExams = async () => {
+    setLoadingExams(true);
+    try {
+        if (!patient?.id) return;
+        const result = await api.exames.listByPatient(patient.id);
+        setRecentExams(result.items as unknown as Exam[]);
+    } catch (e) {
+        console.error('Erro ao carregar exames:', e);
+    } finally {
+        setLoadingExams(false);
+    }
+  };
+
+  const handleSaveExam = async () => {
+      if (!newExam.tipo || !newExam.data) return;
+      
+      try {
+          const user = api.auth.getUser();
+          await api.exames.create({
+              patient_id: patient.id,
+              tipo_exame: newExam.tipo,
+              data_realizacao: newExam.data,
+              observacao: newExam.obs,
+              usuario_id: user?.id
+          });
+          setNewExam({ tipo: '', data: '', obs: '' });
+          setIsAdding(false);
+          loadRecentExams();
+      } catch (e) {
+          console.error('Erro ao salvar exame:', e);
+          alert('Erro ao salvar exame.');
+      }
+  };
 
   if (!isOpen) return null;
 
@@ -19,19 +65,19 @@ const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, pa
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl border-2 border-white shadow-sm">
-              {patient?.name?.charAt(0) || 'P'}
+              {(patient?.nome || patient?.name || '?').charAt(0)}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">{patient?.name || 'Paciente'}</h2>
+              <h2 className="text-lg font-bold text-gray-900">{patient?.nome || patient?.name || 'Paciente'}</h2>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <span className="flex items-center gap-1">
                   <span className="material-symbols-outlined text-xs">badge</span>
-                  CPF: {patient?.cpf || '000.000.000-00'}
+                  ID: {patient?.id}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                 <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">cake</span>
-                  {patient?.age || '00'} anos
+                  <span className="material-symbols-outlined text-xs">group</span>
+                  Eq: {patient?.equipe}
                 </span>
               </div>
             </div>
@@ -46,7 +92,7 @@ const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, pa
 
         {/* Tabs */}
         <div className="px-6 border-b border-gray-100 flex gap-6">
-          {['personal', 'exams', 'history'].map((tab) => (
+          {['exams', 'personal'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -56,9 +102,8 @@ const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, pa
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              {tab === 'personal' && 'Dados Pessoais'}
-              {tab === 'exams' && 'Exames & Resultados'}
-              {tab === 'history' && 'Histórico Clínico'}
+              {tab === 'personal' && 'Dados Pessoais (Sheets)'}
+              {tab === 'exams' && 'Acompanhamento de Exames'}
             </button>
           ))}
         </div>
@@ -68,81 +113,97 @@ const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, pa
           {activeTab === 'exams' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Exames Recentes</h3>
-                <button className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">add</span>
-                  Adicionar Novo
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Histórico e Registros</h3>
+                <button 
+                    onClick={() => setIsAdding(!isAdding)}
+                    className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">{isAdding ? 'remove' : 'add'}</span>
+                  {isAdding ? 'Cancelar' : 'Registrar Novo Exame'}
                 </button>
               </div>
 
-              {/* Exam Card 1 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0">
-                      <span className="material-symbols-outlined">favorite</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Hemograma Completo</h4>
-                      <p className="text-sm text-gray-500">Solicitado em 12/05/2024 por Dr. Silva</p>
-                      
-                      <div className="mt-3 flex gap-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Pendente
-                        </span>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Laboratório Central
-                        </span>
+              {isAdding && (
+                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4 animate-in slide-in-from-top-2">
+                      <h4 className="font-bold text-blue-900 mb-3 text-sm">Novo Registro</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-xs font-medium text-blue-800 mb-1">Tipo de Exame</label>
+                              <input 
+                                  type="text" 
+                                  className="w-full p-2 rounded-lg border-blue-200 text-sm focus:ring-blue-500" 
+                                  placeholder="Ex: Mamografia"
+                                  value={newExam.tipo}
+                                  onChange={e => setNewExam({...newExam, tipo: e.target.value})}
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-medium text-blue-800 mb-1">Data Realização</label>
+                              <input 
+                                  type="date" 
+                                  className="w-full p-2 rounded-lg border-blue-200 text-sm focus:ring-blue-500"
+                                  value={newExam.data}
+                                  onChange={e => setNewExam({...newExam, data: e.target.value})}
+                              />
+                          </div>
+                          <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-blue-800 mb-1">Observação</label>
+                              <textarea 
+                                  className="w-full p-2 rounded-lg border-blue-200 text-sm focus:ring-blue-500" 
+                                  rows={2}
+                                  value={newExam.obs}
+                                  onChange={e => setNewExam({...newExam, obs: e.target.value})}
+                              ></textarea>
+                          </div>
                       </div>
-                    </div>
+                      <div className="mt-3 flex justify-end">
+                          <button 
+                            onClick={handleSaveExam}
+                            className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm"
+                          >
+                              Salvar Registro
+                          </button>
+                      </div>
                   </div>
-                  <button className="text-gray-400 hover:text-blue-600 transition-colors">
-                    <span className="material-symbols-outlined">edit</span>
-                  </button>
-                </div>
-              </div>
+              )}
 
-              {/* Exam Card 2 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                      <span className="material-symbols-outlined">science</span>
+              {/* Lista de Exames Recentes (PocketBase) */}
+              {loadingExams ? (
+                  <div className="text-center py-4 text-gray-400">Carregando histórico...</div>
+              ) : (
+                  recentExams.map((exam) => (
+                    <div key={exam.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                        <div className="flex justify-between items-start pl-2">
+                            <div>
+                                <h4 className="font-bold text-gray-900">{exam.tipo_exame}</h4>
+                                <p className="text-sm text-gray-500">Realizado em: {new Date(exam.data_realizacao).toLocaleDateString('pt-BR')}</p>
+                                {exam.observacao && (
+                                    <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded-lg">{exam.observacao}</p>
+                                )}
+                            </div>
+                            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                                Via Sistema
+                            </span>
+                        </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Colesterol Total e Frações</h4>
-                      <p className="text-sm text-gray-500">Realizado em 10/05/2024</p>
-                      
-                      <div className="mt-3 flex gap-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Concluído
-                        </span>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100">
-                          <span className="material-symbols-outlined text-xs mr-1">download</span>
-                          Ver Resultado
-                        </span>
-                      </div>
+                  ))
+              )}
 
-                      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-gray-600">LDL</span>
-                          <span className="font-medium text-gray-900">130 mg/dL</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                          <div className="bg-yellow-500 h-1.5 rounded-full" style={{ width: '70%' }}></div>
-                        </div>
-                        <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-xs">warning</span>
-                          Levemente alterado
-                        </p>
+              {/* Dados da Planilha (Read-Only) */}
+              {patient?.exame_a && (
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 opacity-75">
+                      <div className="flex justify-between items-start">
+                          <div>
+                              <h4 className="font-bold text-gray-700">Registro Planilha (Exame A)</h4>
+                              <p className="text-sm text-gray-500">Data: {patient.exame_a}</p>
+                          </div>
+                          <span className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded-full">
+                                Importado
+                            </span>
                       </div>
-                    </div>
                   </div>
-                  <button className="text-gray-400 hover:text-blue-600 transition-colors">
-                    <span className="material-symbols-outlined">edit</span>
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -151,28 +212,22 @@ const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, pa
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-                  <input type="text" defaultValue={patient?.name} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.nome || patient?.name}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento</label>
-                  <input type="date" defaultValue="1985-10-20" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.unidade}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                  <input type="text" defaultValue={patient?.cpf} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Equipe</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.equipe}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                  <input type="tel" defaultValue="(11) 99999-9999" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Micro Área</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.micro_area}</div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'history' && (
-            <div className="text-center py-12 text-gray-500">
-              <span className="material-symbols-outlined text-4xl mb-2 text-gray-300">history_edu</span>
-              <p>Histórico clínico completo disponível em breve.</p>
+              <p className="mt-4 text-xs text-gray-400 text-center">Dados sincronizados do Google Sheets. Somente leitura.</p>
             </div>
           )}
         </div>
@@ -183,10 +238,7 @@ const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, pa
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Cancelar
-          </button>
-          <button className="px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm">
-            Salvar Alterações
+            Fechar
           </button>
         </div>
       </div>

@@ -1,0 +1,10 @@
+name = "amar-acom-mulher-acoes-rast"
+# pages_build_output_dir = "dist"
+compatibility_date = "2023-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+POCKETBASE_URL = "https://centraldedados.dev.br"
+GOOGLE_SHEETS_ID = "1lnAAasqmbdNJx99VVQsG2c2UnzUFek9BZv8jLeoeGYc"
+GOOGLE_SERVICE_ACCOUNT_EMAIL = "app-amar-leitor-planilha@amar-489211.iam.gserviceaccount.com"
+# GOOGLE_PRIVATE_KEY = "REMOVED_FOR_SECURITY"

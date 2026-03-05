@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { api, translateError } from '../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    setError('');
+
+    try {
+      await api.auth.login(email, password);
       navigate('/');
-    }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      setError(translateError(err) || 'Falha no login. Verifique suas credenciais.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -28,11 +38,19 @@ const Login = () => {
             Bem-vindo ao AMAR
           </h2>
           <p className="mt-2 text-sm text-gray-500">
-            Acompanhamento de Rastreio e Gestão de Saúde
+            Acompanhamento da Mulher nas Ações de Rastreio
           </p>
         </div>
         
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center border border-red-100">
+            {error}
+          </div>
+        )}
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {/* Debug info (remover em produção) */}
+          {/* <div className="text-xs text-gray-400">Unidades carregadas: {unidades.length}</div> */}
           <div className="rounded-md shadow-sm -space-y-px">
             <div className="mb-4">
               <label htmlFor="email-address" className="block text-sm font-medium text-gray-700 mb-1">
@@ -66,14 +84,23 @@ const Login = () => {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-all"
+                  className="appearance-none relative block w-full px-3 py-3 pl-10 pr-10 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-all"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <span className="material-symbols-outlined text-gray-400 hover:text-gray-600 cursor-pointer select-none">
+                    {showPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
               </div>
             </div>
           </div>
@@ -92,9 +119,9 @@ const Login = () => {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+              <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
                 Esqueceu sua senha?
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -117,46 +144,15 @@ const Login = () => {
               )}
             </button>
           </div>
+          <div className="text-center mt-4">
+            <p className="text-sm text-gray-600">
+              Não tem uma conta?{' '}
+              <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                Cadastre-se aqui
+              </Link>
+            </p>
+          </div>
         </form>
-
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">
-                Ou continue com
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <div>
-              <a
-                href="#"
-                className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-              >
-                <span className="sr-only">Google</span>
-                <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 7.373-2.36 1.147-1.147 1.68-2.88 1.68-4.373 0-.427-.053-.813-.08-1.173h-9.013z" />
-                </svg>
-              </a>
-            </div>
-
-            <div>
-              <a
-                href="#"
-                className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-              >
-                <span className="sr-only">Microsoft</span>
-                <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

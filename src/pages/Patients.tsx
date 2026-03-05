@@ -1,19 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PatientEditModal from '../components/PatientEditModal';
+import { api } from '../services/api';
+import type { Patient } from '../types';
 
 const Patients = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const patients = [
-    { id: 1, name: 'Ana Silva', cpf: '123.456.789-00', birthDate: '1985-10-20', status: 'Ativo', lastExam: '12/05/2024' },
-    { id: 2, name: 'Carlos Oliveira', cpf: '987.654.321-11', birthDate: '1990-05-15', status: 'Pendente', lastExam: '10/05/2024' },
-    { id: 3, name: 'Mariana Santos', cpf: '456.789.123-22', birthDate: '1978-12-03', status: 'Inativo', lastExam: '05/04/2024' },
-    { id: 4, name: 'João Pereira', cpf: '321.654.987-33', birthDate: '1995-08-25', status: 'Ativo', lastExam: '15/05/2024' },
-    { id: 5, name: 'Fernanda Costa', cpf: '789.123.456-44', birthDate: '1982-03-10', status: 'Ativo', lastExam: '20/05/2024' },
-  ];
+  useEffect(() => {
+    loadPatients();
+  }, []);
 
-  const handleEdit = (patient: any) => {
+  const loadPatients = async () => {
+    setLoading(true);
+    try {
+        const result = await api.patients.list();
+        // Verifica se o resultado tem a estrutura { data, headers } ou é um array direto
+        if (Array.isArray(result)) {
+            setPatients(result);
+        } else {
+            setPatients(result.data);
+            setHeaders(result.headers || []);
+        }
+    } catch (err) {
+        console.error(err);
+        setError('Erro ao carregar lista de pacientes.');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleEdit = (patient: Patient) => {
     setSelectedPatient(patient);
     setIsModalOpen(true);
   };
@@ -21,40 +43,95 @@ const Patients = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedPatient(null);
+    // Recarrega para ver atualizações
+    loadPatients();
+  };
+
+  const filteredPatients = patients.filter(p => 
+    (p.nome || p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.id || '').toString().includes(searchTerm)
+  );
+
+  // Função auxiliar para encontrar o header correto
+  const getHeader = (keys: string[]) => {
+      if (!headers.length) return null;
+      // Procura um header que contenha alguma das chaves
+      return headers.find(h => keys.some(k => h.toLowerCase().includes(k.toLowerCase())));
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Lista de Pacientes</h1>
-          <p className="text-gray-500 text-sm mt-1">Gerencie os pacientes cadastrados no sistema</p>
+          <p className="text-gray-500 text-sm mt-1">Gerencie os pacientes da sua unidade</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
-          <span className="material-symbols-outlined text-lg">person_add</span>
-          Novo Paciente
-        </button>
+        <div className="flex gap-4 w-full md:w-auto">
+             <div className="relative w-full md:w-64">
+                <input 
+                    type="text" 
+                    placeholder="Buscar paciente por nome ou ID..." 
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-lg">search</span>
+             </div>
+        </div>
       </div>
 
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-100 flex items-center gap-2">
+            <span className="material-symbols-outlined text-red-500">error</span>
+            {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nome
+                  UNIDADE
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  CPF
+                  EQUIPE
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data de Nascimento
+                  MICROÁREA
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  NOME
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Último Exame
+                  CNS
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  DATA DE NASCIMENTO (IDADE)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  VARIÁVEL 2 (DATA DA COLETA)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  RESULTADO SISCAN (DATA DO RESULTADO)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  RESULTADO LABORATÓRIO (DATA DO CADASTRO)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  APROVADOS LABORATÓRIO(DATA DA COLETA)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  COLETA DNA HPV
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  RESULTADO DNA HPV
                 </th>
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Ações</span>
@@ -62,94 +139,78 @@ const Patients = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {patients.map((patient) => (
-                <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
+              {filteredPatients.length > 0 ? (
+                filteredPatients.map((patient) => (
+                <tr key={patient.id} className="hover:bg-gray-50 transition-colors group">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.unidade || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.equipe || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.micro_area || '-'}</div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                          {patient.name.charAt(0)}
+                          {(patient.nome || patient.name || '?').charAt(0)}
                         </div>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{patient.name}</div>
-                        <div className="text-sm text-gray-500">ID: #{patient.id.toString().padStart(4, '0')}</div>
+                        <div className="text-sm font-medium text-gray-900">{patient.nome || patient.name || '-'}</div>
+                        <div className="text-xs text-gray-500">ID: #{patient.id || '-'}</div>
+                        {patient.telefone && <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">call</span>{patient.telefone}</div>}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{patient.cpf}</div>
+                    <div className="text-sm text-gray-900">{patient.cns || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{new Date(patient.birthDate).toLocaleDateString('pt-BR')}</div>
+                    <div className="text-sm text-gray-900">{patient['dat-nascimento'] || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      patient.status === 'Ativo' ? 'bg-green-100 text-green-800' : 
-                      patient.status === 'Pendente' ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {patient.status}
-                    </span>
+                    <div className="text-sm text-gray-900">{patient.data_coleta_v2 || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {patient.lastExam}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.resultado_siscan || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.resultado_laboratorio || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.aprovados_laboratorio || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.coleta_dna_hpv || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.resultado_dna_hpv || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button 
                       onClick={() => handleEdit(patient)}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
+                      className="text-blue-600 hover:text-blue-900 font-medium px-3 py-1 rounded-lg hover:bg-blue-50 transition-colors"
                     >
-                      Editar
-                    </button>
-                    <button className="text-red-600 hover:text-red-900">
-                      Excluir
+                      Acompanhar
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
+              ) : (
+                <tr>
+                    <td colSpan={13} className="px-6 py-10 text-center text-gray-500">
+                        Nenhum paciente encontrado com este termo de busca.
+                    </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        
-        {/* Pagination */}
-        <div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Mostrando <span className="font-medium">1</span> a <span className="font-medium">5</span> de <span className="font-medium">97</span> resultados
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <a href="#" className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  <span className="sr-only">Anterior</span>
-                  <span className="material-symbols-outlined text-sm">chevron_left</span>
-                </a>
-                <a href="#" aria-current="page" className="z-10 bg-blue-50 border-blue-500 text-blue-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                  1
-                </a>
-                <a href="#" className="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                  2
-                </a>
-                <a href="#" className="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                  3
-                </a>
-                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                  ...
-                </span>
-                <a href="#" className="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
-                  10
-                </a>
-                <a href="#" className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  <span className="sr-only">Próximo</span>
-                  <span className="material-symbols-outlined text-sm">chevron_right</span>
-                </a>
-              </nav>
-            </div>
-          </div>
-        </div>
       </div>
+      )}
 
       <PatientEditModal 
         isOpen={isModalOpen} 
