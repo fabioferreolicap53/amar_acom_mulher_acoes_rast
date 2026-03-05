@@ -138,7 +138,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const accessToken = await getAccessToken(env.GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey);
 
     const sheetName = 'V2 DENOMINADOR (TOTAL)';
-    const range = 'A3:O';
+    // Aumentar range para pegar mais colunas se necessário, e começar de A1 para garantir cabeçalhos corretos
+    // Antes estava A3:O. Vamos tentar A1:Z para pegar cabeçalhos e mais colunas
+    const range = 'A1:Z';
     const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEETS_ID}/values/${encodeURIComponent(`${sheetName}!${range}`)}`;
     const sheetsResponse = await fetch(sheetUrl, {
         headers: {
@@ -147,81 +149,103 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     });
     
     const sheetsData: any = await sheetsResponse.json();
-    const rows = sheetsData.values;
+    const allRows = sheetsData.values;
     
-    if (!rows || rows.length === 0) {
+    if (!allRows || allRows.length === 0) {
         return new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
     }
 
-    // 3. Processar e Filtrar Dados
-    // A linha 3 contém os cabeçalhos. O range A3:P garante que pegamos até a coluna P (se houver dados extras) ou pelo menos até O.
-    // Mapeamento fixo baseado na estrutura conhecida (conforme unidades.ts):
-    // Coluna M (índice 12): Equipe
-    // Coluna N (índice 13): Microárea
-    // Coluna O (índice 14): Unidade
+    // Identificar a linha de cabeçalho
+    // Procura a linha que contém "Nome" e "Unidade" (ou similar)
+    let headerRowIndex = 0;
+    // Se começamos de A1, o cabeçalho pode estar na linha 0, 1 ou 2.
+    // O código anterior usava A3, o que sugere que o cabeçalho estava na linha 3 (índice 0 do resultado A3:O).
+    // Mas se mudamos para A1, precisamos achar onde está.
     
-    // Vamos usar os cabeçalhos da primeira linha para as propriedades dinâmicas,
-    // mas usaremos índices fixos para a filtragem de segurança.
+    // Procura linha com "UNIDADE" ou "NOME"
+    const foundHeaderIndex = allRows.findIndex((r: string[]) => 
+        r.some(c => c && (
+            String(c).toUpperCase().includes('UNIDADE') || 
+            String(c).toUpperCase().includes('NOME') ||
+            String(c).toUpperCase().includes('MICRO')
+        ))
+    );
     
-    const headers = rows[0].map((h: string) => h.trim());
+    if (foundHeaderIndex !== -1) {
+        headerRowIndex = foundHeaderIndex;
+    } else {
+        // Fallback para linha 2 (índice 2, correspondente a A3 se A1=0) se não achar nada, 
+        // assumindo estrutura antiga mas com range novo.
+        headerRowIndex = 2; 
+    }
     
-    // Dados começam na linha seguinte aos cabeçalhos
-    const rawData = rows.slice(1);
+    console.log(`[Pacientes] Linha de cabeçalho detectada: ${headerRowIndex + 1} (Índice: ${headerRowIndex})`);
+
+    const headers = allRows[headerRowIndex].map((h: string) => h ? h.trim() : '');
+    const rawData = allRows.slice(headerRowIndex + 1);
 
     const filteredData = rawData.filter((row: any[]) => {
-        // Índices baseados em A=0, ..., M=12, N=13, O=14
-        // Garantir que o array tenha tamanho suficiente
-        const pEquipe = row[12] ? String(row[12]).trim() : '';
-        const pMicro = row[13] ? String(row[13]).trim() : '';
-        const pUnidade = row[14] ? String(row[14]).trim() : '';
+        // Índices baseados em A=0, ..., M=12, N=13, O=14 (Assumindo que M=Equipe, N=Micro, O=Unidade conforme comentário)
+        // MAS precisamos confirmar se os índices estão corretos.
+        // Se a planilha mudou, isso quebra.
+        // Vamos tentar achar pelo nome da coluna se possível, ou usar fixo se confiarmos.
+        // Pela imagem do usuario e contexto anterior:
+        // Coluna A (0) = Unidade? Não, na imagem Unidade é a primeira.
+        // Vamos assumir que o frontend espera:
+        // Unidade, Equipe, Microarea, Nome...
         
-        const uUnidade = user.unidade ? String(user.unidade).trim() : '';
-        const uEquipe = user.equipe ? String(user.equipe).trim() : '';
-        const uMicro = user.micro_area ? String(user.micro_area).trim() : '';
+        // CORREÇÃO: O código anterior usava índices fixos 12, 13, 14 para Equipe, Micro, Unidade.
+        // Vamos verificar se isso faz sentido com o range A3:O.
+        // A, B, C, D, E, F, G, H, I, J, K, L, M, N, O
+        // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,11,12,13,14
+        
+        // Se a planilha tem:
+        // A=UNIDADE, B=EQUIPE, C=MICROÁREA (conforme imagem do frontend)
+        // Então os índices seriam 0, 1, 2.
+        
+        // Vamos tentar detectar dinamicamente pelos headers para ser mais robusto.
+        const idxUnidade = headers.findIndex((h: string) => h.toUpperCase().includes('UNIDADE'));
+        const idxEquipe = headers.findIndex((h: string) => h.toUpperCase().includes('EQUIPE'));
+        const idxMicro = headers.findIndex((h: string) => h.toUpperCase().includes('MICRO') || h.toUpperCase().includes('AREA'));
+        
+        // Fallback para índices fixos antigos se não achar (14, 12, 13) ou novos (0, 1, 2)
+        // Vamos usar 0, 1, 2 como fallback primário pois parece ser o layout visual.
+        const finalIdxUnidade = idxUnidade !== -1 ? idxUnidade : 0;
+        const finalIdxEquipe = idxEquipe !== -1 ? idxEquipe : 1;
+        const finalIdxMicro = idxMicro !== -1 ? idxMicro : 2;
 
-        // Se o usuário não tiver unidade vinculada (ex: admin geral), mostra tudo? 
-        // Assumindo que usuários comuns sempre têm unidade.
-        if (!uUnidade) return true; 
+        const pUnidade = row[finalIdxUnidade] ? String(row[finalIdxUnidade]).trim() : '';
+        const pEquipe = row[finalIdxEquipe] ? String(row[finalIdxEquipe]).trim() : '';
+        const pMicro = row[finalIdxMicro] ? String(row[finalIdxMicro]).trim() : '';
 
         // Filtragem Hierárquica Estrita
-        if (pUnidade !== uUnidade) return false;
+        if (uUnidade && pUnidade !== uUnidade) return false;
         if (uEquipe && pEquipe !== uEquipe) return false;
         if (uMicro && pMicro !== uMicro) return false;
 
         return true;
     }).map((row: any[]) => {
-        // Mapear para objeto usando os cabeçalhos
+        // Mapear para objeto
         const obj: any = {};
         
-        // Mapeamento explícito das colunas de estrutura (M, N, O) para chaves garantidas
-        obj['equipe'] = row[12];
-        obj['micro_area'] = row[13];
-        obj['unidade'] = row[14];
-
         headers.forEach((h: string, i: number) => {
-            if (row[i] !== undefined) {
-                // Mantém o valor com a chave do cabeçalho original (para exibição dinâmica)
+            if (row[i] !== undefined && h) {
                 obj[h] = row[i];
                 
-                // Mapeamento para chaves normalizadas auxiliares (opcional)
+                // Normalização de chaves para o frontend
                 const lowerH = h.toLowerCase();
                 if (lowerH.includes('nome')) obj['nome'] = row[i];
                 else if (lowerH.includes('nascimento')) obj['dat-nascimento'] = row[i];
                 else if (lowerH.includes('cns')) obj['cns'] = row[i];
+                else if (lowerH.includes('unidade')) obj['unidade'] = row[i];
+                else if (lowerH.includes('equipe')) obj['equipe'] = row[i];
+                else if (lowerH.includes('micro')) obj['micro_area'] = row[i];
             }
         });
         
-        // Gerar ID se não tiver (usando CNS ou aleatório)
-        if (obj['cns']) {
-            obj.id = obj['cns'];
-        } else {
-            // Tenta achar coluna CNS nos headers se o mapeamento acima falhou
-            const cnsIndex = headers.findIndex((h: string) => h.toLowerCase().includes('cns'));
-            if (cnsIndex !== -1 && row[cnsIndex]) {
-                obj.id = row[cnsIndex];
-            } else {
-                obj.id = String(Math.random()).slice(2, 10);
-            }
+        // Gerar ID se não tiver
+        if (!obj.id) {
+             obj.id = obj['cns'] || String(Math.random()).slice(2, 10);
         }
         
         return obj;

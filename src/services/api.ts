@@ -119,11 +119,17 @@ export const api = {
     }
   },
   patients: {
-    list: async (): Promise<{ data: Patient[], headers: string[] }> => {
+    list: async (filters?: { unidade?: string; equipe?: string; microArea?: string }): Promise<{ data: Patient[], headers: string[] }> => {
       try {
           const token = pb.authStore.token;
-          // Em produção, isso bateria no endpoint da Cloudflare Pages Functions
-          const response = await fetch('/api/pacientes', {
+          const queryParams = new URLSearchParams();
+          if (filters?.unidade) queryParams.append('unidade', filters.unidade);
+          if (filters?.equipe) queryParams.append('equipe', filters.equipe);
+          if (filters?.microArea) queryParams.append('microArea', filters.microArea);
+
+          const url = `/api/pacientes${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+          const response = await fetch(url, {
             headers: {
                 'Authorization': token
             }

@@ -22,14 +22,8 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-[#1c2e4a] text-white flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300">
-      <div className="p-6 flex items-center gap-3 border-b border-white/10">
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-          <span className="material-symbols-outlined text-white text-xl">health_and_safety</span>
-        </div>
-        <h1 className="text-xl font-bold tracking-tight">AMAR</h1>
-      </div>
-
+    <aside className="w-64 bg-[#1c2e4a] text-white flex flex-col h-screen fixed left-0 top-16 z-40 transition-all duration-300 md:hidden">
+      {/* Conteúdo da Sidebar (apenas mobile agora) */}
       <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
         {menuItems.map((item) => (
           <Link
