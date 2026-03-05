@@ -75,46 +75,43 @@ export const api = {
   unidades: {
     list: async (): Promise<UnidadeData[]> => {
       try {
-        // Cache busting: adicionar timestamp para evitar cache do navegador
-        const response = await fetch(`/api/unidades?t=${Date.now()}`);
-        
-        // Verifica se a resposta é HTML (indicando erro de rota ou 404 do SPA)
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("text/html")) {
-            console.warn('⚠️ A API retornou HTML em vez de JSON. Isso geralmente indica que a rota da Function não foi encontrada.');
-            console.warn('DICA: Certifique-se de estar rodando "npm run dev:wrangler" e que o backend está ativo.');
-            throw new Error('Rota da API não encontrada (retornou HTML)');
+        // Tentar buscar da API Functions (Cloudflare)
+        // Se falhar (HTML/404), tenta o JSON estático na pasta public
+        let response;
+        try {
+            response = await fetch(`/api/unidades?t=${Date.now()}`);
+            const contentType = response.headers.get("content-type");
+            
+            // Se retornou HTML, é erro de rota (Vite servindo index.html)
+            if (contentType && contentType.includes("text/html")) {
+                throw new Error('Rota da API retornou HTML (Function não encontrada)');
+            }
+            
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+        } catch (apiError) {
+            console.warn('API Function indisponível, tentando fallback estático...', apiError);
+            // Fallback para arquivo estático em public/api/unidades.json
+            response = await fetch(`/api/unidades.json?t=${Date.now()}`);
         }
 
         if (!response.ok) {
-            console.warn(`Falha ao carregar unidades (Status: ${response.status}). Usando fallback.`);
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`Falha ao carregar unidades (Status: ${response.status})`);
         }
         
         const data = await response.json();
         
         if (!Array.isArray(data)) {
-             console.warn('API retornou formato inválido (não é array). Usando fallback.');
-             throw new Error('Formato inválido');
-        }
-
-        // Validação extra: verificar se os itens são objetos com propriedade 'unidade'
-        // Se vier strings (cache antigo), filtrar ou transformar
-        if (data.length > 0 && typeof data[0] === 'string') {
-            console.warn('API retornou array de strings (formato antigo). Ignorando cache inválido.');
-            throw new Error('Formato de dados antigo (strings em vez de objetos)');
+             throw new Error('Formato inválido (não é array)');
         }
 
         return data;
       } catch (e) {
-        console.error('Erro na API de unidades (usando fallback):', e);
-        // Fallback com dados simulados mais completos em caso de erro
+        console.error('Erro crítico ao carregar unidades:', e);
+        // Último recurso: dados hardcoded
         return [
             { unidade: "CF DEOLINDO COUTO", equipe: "Equipe 1", microArea: "01" },
-            { unidade: "CF DEOLINDO COUTO", equipe: "Equipe 2", microArea: "02" },
-            { unidade: "UBS Central", equipe: "Alpha", microArea: "10" },
-            { unidade: "UBS Norte", equipe: "Beta", microArea: "20" },
-            { unidade: "UBS Sul", equipe: "Gama", microArea: "30" }
+            { unidade: "CF EDSON ABDALLA SAAD", equipe: "PRACA DO MAIA", microArea: "01" }
         ];
       }
     }
