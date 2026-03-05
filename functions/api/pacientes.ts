@@ -239,7 +239,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
                 else if (lowerH.includes('cns')) obj['cns'] = row[i];
                 else if (lowerH.includes('unidade')) obj['unidade'] = row[i];
                 else if (lowerH.includes('equipe')) obj['equipe'] = row[i];
-                else if (lowerH.includes('micro')) obj['micro_area'] = row[i];
+                else if (lowerH.includes('micro') || lowerH.includes('area')) obj['micro_area'] = row[i];
+                else if (lowerH.includes('siscan')) obj['resultado_siscan'] = row[i];
+                else if (lowerH.includes('laboratório') && lowerH.includes('resultado')) obj['resultado_laboratorio'] = row[i];
+                else if (lowerH.includes('aprovados')) obj['aprovados_laboratorio'] = row[i];
+                else if (lowerH.includes('coleta') && lowerH.includes('dna')) obj['coleta_dna_hpv'] = row[i];
+                else if (lowerH.includes('resultado') && lowerH.includes('dna')) obj['resultado_dna_hpv'] = row[i];
+                else if (lowerH.includes('variável 2')) obj['data_coleta_v2'] = row[i];
             }
         });
         
