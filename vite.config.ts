@@ -5,6 +5,7 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const functionsApiUrl = env.VITE_FUNCTIONS_API_URL || 'http://127.0.0.1:8789';
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
@@ -19,7 +20,7 @@ export default defineConfig(({mode}) => {
       proxy: {
         // Redireciona chamadas da API para o Wrangler (Cloudflare Pages Functions)
         '/api': {
-          target: 'http://127.0.0.1:8788',
+          target: functionsApiUrl,
           changeOrigin: true,
           secure: false,
         },

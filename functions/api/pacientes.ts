@@ -11,6 +11,13 @@ interface Env {
   GOOGLE_PRIVATE_KEY: string;
 }
 
+const normalizeText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
 // Função auxiliar para criar JWT manualmente (Web Crypto API)
 async function createJWT(email: string, privateKey: string, scopes: string[]) {
   const header = { alg: 'RS256', typ: 'JWT' };
@@ -82,11 +89,15 @@ async function getAccessToken(email: string, privateKey: string) {
     });
 
     const data: any = await response.json();
+    if (!response.ok || !data.access_token) {
+        throw new Error(`Falha ao obter token Google: ${JSON.stringify(data)}`);
+    }
     return data.access_token;
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
+  console.log('[Pacientes] onRequest chamada', request.url);
 
   // 1. Validar Autenticação (PocketBase)
   const authHeader = request.headers.get('Authorization');
@@ -105,28 +116,86 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
     }
 
+    // Parâmetros de filtro (prioridade: URL > perfil do usuário)
+    const url = new URL(request.url);
+    const uUnidade = url.searchParams.get('unidade') || user.unidade || '';
+    const uEquipe = url.searchParams.get('equipe') || user.equipe || '';
+    const uMicro = url.searchParams.get('microArea') || user.micro_area || '';
+    console.log(`[Pacientes] Filtros - Unidade: ${uUnidade}, Equipe: ${uEquipe}, Micro: ${uMicro}`);
+
     // 2. Obter dados do Google Sheets
-    if (!env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !env.GOOGLE_PRIVATE_KEY || env.GOOGLE_PRIVATE_KEY.includes('YOUR_PRIVATE_KEY_HERE') || !env.GOOGLE_SHEETS_ID) {
+    // Verificação relaxada para permitir que funcione se as variáveis estiverem presentes
+    // mesmo que o valor de PRIVATE_KEY seja apenas o conteúdo (sem headers PEM)
+    if (!env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !env.GOOGLE_PRIVATE_KEY || !env.GOOGLE_SHEETS_ID) {
         // MOCK DATA (V2)
-        console.warn('⚠️ Credenciais do Google Sheets ausentes ou inválidas. Retornando dados mockados (Estrutura V2).');
+        console.warn('⚠️ Credenciais do Google Sheets ausentes. Retornando dados mockados.');
         const mockData = [
-            { id: '123', 'Nome Completo': 'Maria Silva', 'Unidade de Saúde': 'UBS Central', 'Equipe': '110', 'Micro Área': '01', 'Data de Nascimento': '1980-05-12', 'Telefone': '(11) 99999-1111', 'Data Coleta': '2024-01-01', 'Situação': 'pendente',
-              nome: 'Maria Silva', unidade: 'UBS Central', equipe: '110', micro_area: '01', data_nascimento: '1980-05-12', telefone: '(11) 99999-1111', exame_a: '2024-01-01', status: 'pendente' },
-            { id: '124', 'Nome Completo': 'Joana Souza', 'Unidade de Saúde': 'UBS Norte', 'Equipe': '110', 'Micro Área': '02', 'Data de Nascimento': '1992-08-23', 'Telefone': '(11) 99999-2222', 'Data Coleta': '2024-02-01', 'Situação': 'ok',
-              nome: 'Joana Souza', unidade: 'UBS Norte', equipe: '110', micro_area: '02', data_nascimento: '1992-08-23', telefone: '(11) 99999-2222', exame_a: '2024-02-01', status: 'ok' },
-            { id: '125', 'Nome Completo': 'Ana Costa', 'Unidade de Saúde': 'UBS Sul', 'Equipe': '111', 'Micro Área': '01', 'Data de Nascimento': '1975-11-30', 'Telefone': '(11) 99999-3333', 'Data Coleta': '2024-03-01', 'Situação': 'pendente',
-              nome: 'Ana Costa', unidade: 'UBS Sul', equipe: '111', micro_area: '01', data_nascimento: '1975-11-30', telefone: '(11) 99999-3333', exame_a: '2024-03-01', status: 'pendente' }
+            { 
+                id: '123', 
+                nome: 'Maria Silva', 
+                unidade: 'UBS Central', 
+                equipe: '110', 
+                micro_area: '01', 
+                data_nascimento: '1980-05-12', 
+                cns: '123456789012345',
+                data_coleta_v2: '2024-01-01',
+                resultado_siscan: '2024-01-15',
+                resultado_laboratorio: '2024-01-10',
+                aprovados_laboratorio: '2024-01-02',
+                coleta_dna_hpv: 'Sim',
+                resultado_dna_hpv: 'Negativo',
+                status: 'pendente' 
+            },
+            { 
+                id: '124', 
+                nome: 'Joana Souza', 
+                unidade: 'UBS Norte', 
+                equipe: '110', 
+                micro_area: '02', 
+                data_nascimento: '1992-08-23', 
+                cns: '234567890123456',
+                data_coleta_v2: '2024-02-01',
+                resultado_siscan: '2024-02-20',
+                resultado_laboratorio: '2024-02-15',
+                aprovados_laboratorio: '2024-02-05',
+                coleta_dna_hpv: 'Não',
+                resultado_dna_hpv: '-',
+                status: 'ok' 
+            },
+            { 
+                id: '126', 
+                nome: 'Claudia Mendes', 
+                unidade: 'UBS Leste', 
+                equipe: '112', 
+                micro_area: '03', 
+                data_nascimento: '1985-02-14', 
+                cns: '345678901234567',
+                data_coleta_v2: '2024-03-10',
+                resultado_siscan: '2024-03-25',
+                resultado_laboratorio: '2024-03-20',
+                aprovados_laboratorio: '2024-03-12',
+                coleta_dna_hpv: 'Sim',
+                resultado_dna_hpv: 'Positivo',
+                status: 'ok' 
+            }
         ];
         
         const filteredMock = mockData.filter(p => 
-            (!user.unidade || p.unidade === user.unidade) &&
-            (!user.equipe || p.equipe === user.equipe) &&
-            (!user.micro_area || p.micro_area === user.micro_area)
+            (!user.unidade || normalizeText(p.unidade) === normalizeText(user.unidade)) &&
+            (!user.equipe || normalizeText(p.equipe) === normalizeText(user.equipe)) &&
+            (!user.micro_area || normalizeText(p.micro_area) === normalizeText(user.micro_area))
         );
 
         return new Response(JSON.stringify({
             data: filteredMock,
-            headers: ['Nome Completo', 'Unidade de Saúde', 'Equipe', 'Micro Área', 'Data de Nascimento', 'Telefone', 'Data Coleta', 'Situação']
+            headers: [
+                'UNIDADE', 'EQUIPE', 'MICROÁREA', 'NOME', 'CNS', 
+                'DATA DE NASCIMENTO', 'VARIÁVEL 2 (DATA DA COLETA)', 
+                'RESULTADO SISCAN (DATA DO RESULTADO)', 
+                'RESULTADO LABORATÓRIO (DATA DO CADASTRO)', 
+                'APROVADOS LABORATÓRIO(DATA DA COLETA)', 
+                'COLETA DNA HPV', 'RESULTADO DNA HPV'
+            ]
         }), {
             headers: { 'Content-Type': 'application/json' }
         });
@@ -136,11 +205,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // Precisamos tratar a chave privada para garantir que as quebras de linha estejam corretas
     const privateKey = env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
     const accessToken = await getAccessToken(env.GOOGLE_SERVICE_ACCOUNT_EMAIL, privateKey);
+    console.log('[Pacientes] Token de acesso obtido, buscando planilha...');
 
     const sheetName = 'V2 DENOMINADOR (TOTAL)';
     // Aumentar range para pegar mais colunas se necessário, e começar de A1 para garantir cabeçalhos corretos
-    // Antes estava A3:O. Vamos tentar A1:Z para pegar cabeçalhos e mais colunas
-    const range = 'A1:Z';
+    // Antes estava A3:O. Vamos tentar A1:ZZ para pegar cabeçalhos e mais colunas
+    const range = 'A1:ZZ';
     const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEETS_ID}/values/${encodeURIComponent(`${sheetName}!${range}`)}`;
     const sheetsResponse = await fetch(sheetUrl, {
         headers: {
@@ -149,82 +219,114 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     });
     
     const sheetsData: any = await sheetsResponse.json();
+    console.log(`[Pacientes] Resposta Sheets API status: ${sheetsResponse.status}`);
+    if (!sheetsResponse.ok) {
+        console.error(`[Pacientes] Erro Sheets API: ${JSON.stringify(sheetsData)}`);
+        return new Response(JSON.stringify({ error: 'Erro ao acessar planilha Google' }), { status: 500 });
+    }
     const allRows = sheetsData.values;
+    console.log(`[Pacientes] Dados brutos da planilha: ${allRows ? allRows.length : 0} linhas`);
     
     if (!allRows || allRows.length === 0) {
-        return new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
+        console.warn('[Pacientes] Planilha vazia ou sem dados');
+        return new Response(JSON.stringify({ data: [], headers: [] }), { headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Identificar a linha de cabeçalho
-    // Procura a linha que contém "Nome" e "Unidade" (ou similar)
-    let headerRowIndex = 0;
-    // Se começamos de A1, o cabeçalho pode estar na linha 0, 1 ou 2.
-    // O código anterior usava A3, o que sugere que o cabeçalho estava na linha 3 (índice 0 do resultado A3:O).
-    // Mas se mudamos para A1, precisamos achar onde está.
+    // Identificar a linha de cabeçalho com pontuação
+    let headerRowIndex = 2; // Fallback padrão
+    let bestHeaderIndex = -1;
+    let maxMatches = 0;
+
+    // Varre as primeiras 10 linhas para achar o cabeçalho
+    const searchLimit = Math.min(allRows.length, 10);
     
-    // Procura linha com "UNIDADE" ou "NOME"
-    const foundHeaderIndex = allRows.findIndex((r: string[]) => 
-        r.some(c => c && (
-            String(c).toUpperCase().includes('UNIDADE') || 
-            String(c).toUpperCase().includes('NOME') ||
-            String(c).toUpperCase().includes('MICRO')
-        ))
-    );
+    for (let i = 0; i < searchLimit; i++) {
+        const row = allRows[i];
+        let matches = 0;
+        row.forEach((cell: string) => {
+             const normalized = normalizeText(String(cell || ''));
+             if (normalized.includes('unidade') || 
+                 normalized.includes('nome') || 
+                 normalized.includes('micro') || 
+                 normalized.includes('equipe') || 
+                 normalized.includes('cns') || 
+                 normalized.includes('siscan') || 
+                 normalized.includes('laboratorio') ||
+                 normalized.includes('variavel')) {
+                 matches++;
+             }
+        });
+        
+        // Se a linha tem mais matches que a anterior, é a candidata
+        if (matches > maxMatches) {
+            maxMatches = matches;
+            bestHeaderIndex = i;
+        }
+    }
     
-    if (foundHeaderIndex !== -1) {
-        headerRowIndex = foundHeaderIndex;
+    if (bestHeaderIndex !== -1 && maxMatches >= 2) {
+        headerRowIndex = bestHeaderIndex;
+        console.log(`[Pacientes] Linha de cabeçalho detectada por pontuação: ${headerRowIndex + 1} (Matches: ${maxMatches})`);
     } else {
-        // Fallback para linha 2 (índice 2, correspondente a A3 se A1=0) se não achar nada, 
-        // assumindo estrutura antiga mas com range novo.
-        headerRowIndex = 2; 
+        console.warn(`[Pacientes] Cabeçalho não identificado com clareza. Usando fallback linha 3.`);
     }
     
     console.log(`[Pacientes] Linha de cabeçalho detectada: ${headerRowIndex + 1} (Índice: ${headerRowIndex})`);
 
-    const headers = allRows[headerRowIndex].map((h: string) => h ? h.trim() : '');
+    const headers: string[] = allRows[headerRowIndex].map((h: string) => h ? h.trim() : '');
+    console.log(`[Pacientes] Headers detectados (${headers.length}):`, headers.map((h: string, i: number) => `${i}:${h}`).join(', '));
     const rawData = allRows.slice(headerRowIndex + 1);
+    console.log(`[Pacientes] Linhas brutas (rawData): ${rawData.length}`);
+    if (rawData.length > 0) {
+        console.log(`[Pacientes] Primeira linha bruta:`, rawData[0]);
+    }
+
+    const normalizedHeaders = headers.map((h: string) => normalizeText(h));
+    console.log('[Pacientes] Headers normalizados:', normalizedHeaders.join(' | '));
+    const findHeaderIndex = (exactMatches: string[], partialMatches: string[]) => {
+        const exactIndex = normalizedHeaders.findLastIndex((h: string) => exactMatches.includes(h));
+        if (exactIndex !== -1) return exactIndex;
+        return normalizedHeaders.findLastIndex((h: string) => partialMatches.some((partial) => h.includes(partial)));
+    };
+
+    const idxUnidade = findHeaderIndex(['unidade'], ['unidade']);
+    const idxEquipe = findHeaderIndex(['equipe'], ['equipe']);
+    const idxMicro = findHeaderIndex(['microarea', 'micro area'], ['micro', 'area']);
+    const idxCns = findHeaderIndex(['cns'], ['npront', 'sus', 'cns']);
+    console.log(`[Pacientes] Índices detectados: Unidade=${idxUnidade}, Equipe=${idxEquipe}, Micro=${idxMicro}`);
+    
+    const finalIdxUnidade = idxUnidade !== -1 ? idxUnidade : 0;
+    const finalIdxEquipe = idxEquipe !== -1 ? idxEquipe : 1;
+    const finalIdxMicro = idxMicro !== -1 ? idxMicro : 2;
+    console.log(`[Pacientes] Índices finais: Unidade=${finalIdxUnidade}, Equipe=${finalIdxEquipe}, Micro=${finalIdxMicro}`);
 
     const filteredData = rawData.filter((row: any[]) => {
         // Índices baseados em A=0, ..., M=12, N=13, O=14 (Assumindo que M=Equipe, N=Micro, O=Unidade conforme comentário)
         // MAS precisamos confirmar se os índices estão corretos.
         // Se a planilha mudou, isso quebra.
-        // Vamos tentar achar pelo nome da coluna se possível, ou usar fixo se confiarmos.
-        // Pela imagem do usuario e contexto anterior:
-        // Coluna A (0) = Unidade? Não, na imagem Unidade é a primeira.
-        // Vamos assumir que o frontend espera:
-        // Unidade, Equipe, Microarea, Nome...
-        
-        // CORREÇÃO: O código anterior usava índices fixos 12, 13, 14 para Equipe, Micro, Unidade.
-        // Vamos verificar se isso faz sentido com o range A3:O.
-        // A, B, C, D, E, F, G, H, I, J, K, L, M, N, O
-        // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,11,12,13,14
-        
-        // Se a planilha tem:
-        // A=UNIDADE, B=EQUIPE, C=MICROÁREA (conforme imagem do frontend)
-        // Então os índices seriam 0, 1, 2.
-        
-        // Vamos tentar detectar dinamicamente pelos headers para ser mais robusto.
-        const idxUnidade = headers.findIndex((h: string) => h.toUpperCase().includes('UNIDADE'));
-        const idxEquipe = headers.findIndex((h: string) => h.toUpperCase().includes('EQUIPE'));
-        const idxMicro = headers.findIndex((h: string) => h.toUpperCase().includes('MICRO') || h.toUpperCase().includes('AREA'));
-        
-        // Fallback para índices fixos antigos se não achar (14, 12, 13) ou novos (0, 1, 2)
-        // Vamos usar 0, 1, 2 como fallback primário pois parece ser o layout visual.
-        const finalIdxUnidade = idxUnidade !== -1 ? idxUnidade : 0;
-        const finalIdxEquipe = idxEquipe !== -1 ? idxEquipe : 1;
-        const finalIdxMicro = idxMicro !== -1 ? idxMicro : 2;
 
-        const pUnidade = row[finalIdxUnidade] ? String(row[finalIdxUnidade]).trim() : '';
-        const pEquipe = row[finalIdxEquipe] ? String(row[finalIdxEquipe]).trim() : '';
-        const pMicro = row[finalIdxMicro] ? String(row[finalIdxMicro]).trim() : '';
 
-        // Filtragem Hierárquica Estrita
-        if (uUnidade && pUnidade !== uUnidade) return false;
-        if (uEquipe && pEquipe !== uEquipe) return false;
-        if (uMicro && pMicro !== uMicro) return false;
+
+
+        const pUnidade = row[finalIdxUnidade] ? String(row[finalIdxUnidade]) : '';
+        const pEquipe = row[finalIdxEquipe] ? String(row[finalIdxEquipe]) : '';
+        const pMicro = row[finalIdxMicro] ? String(row[finalIdxMicro]) : '';
+
+        // Filtragem Hierárquica Flexível
+        const match = (valPlanilha: string, valUsuario: string) => {
+            if (!valUsuario) return true;
+            const p = normalizeText(valPlanilha);
+            const u = normalizeText(valUsuario);
+            // Match exato ou parcial (um contendo o outro)
+            return p === u || p.includes(u) || u.includes(p);
+        };
+
+        if (!match(pUnidade, uUnidade)) return false;
+        if (!match(pEquipe, uEquipe)) return false;
+        if (!match(pMicro, uMicro)) return false;
 
         return true;
-    }).map((row: any[]) => {
+    }).map((row: any[], rowIndex: number) => {
         // Mapear para objeto
         const obj: any = {};
         
@@ -233,25 +335,42 @@ export const onRequest: PagesFunction<Env> = async (context) => {
                 obj[h] = row[i];
                 
                 // Normalização de chaves para o frontend
-                const lowerH = h.toLowerCase();
-                if (lowerH.includes('nome')) obj['nome'] = row[i];
-                else if (lowerH.includes('nascimento')) obj['dat-nascimento'] = row[i];
-                else if (lowerH.includes('cns')) obj['cns'] = row[i];
-                else if (lowerH.includes('unidade')) obj['unidade'] = row[i];
-                else if (lowerH.includes('equipe')) obj['equipe'] = row[i];
-                else if (lowerH.includes('micro') || lowerH.includes('area')) obj['micro_area'] = row[i];
-                else if (lowerH.includes('siscan')) obj['resultado_siscan'] = row[i];
-                else if (lowerH.includes('laboratório') && lowerH.includes('resultado')) obj['resultado_laboratorio'] = row[i];
-                else if (lowerH.includes('aprovados')) obj['aprovados_laboratorio'] = row[i];
-                else if (lowerH.includes('coleta') && lowerH.includes('dna')) obj['coleta_dna_hpv'] = row[i];
-                else if (lowerH.includes('resultado') && lowerH.includes('dna')) obj['resultado_dna_hpv'] = row[i];
-                else if (lowerH.includes('variável 2')) obj['data_coleta_v2'] = row[i];
+                const normalizedHeader = normalizeText(h);
+                if (normalizedHeader.includes('nome')) {
+                    obj['nome'] = row[i];
+                    obj['name'] = row[i];
+                } else if (normalizedHeader.includes('nascimento')) {
+                    obj['dat-nascimento'] = row[i];
+                    obj['data_nascimento'] = row[i];
+                } else if (normalizedHeader === 'cns' || normalizedHeader.includes('npront') || normalizedHeader.includes('sus')) {
+                    obj['cns'] = row[i];
+                } else if (normalizedHeader.includes('unidade')) {
+                    obj['unidade'] = row[i];
+                } else if (normalizedHeader.includes('equipe')) {
+                    obj['equipe'] = row[i];
+                } else if (normalizedHeader.includes('micro') || normalizedHeader.includes('area')) {
+                    obj['micro_area'] = row[i];
+                } else if (normalizedHeader.includes('siscan')) {
+                    obj['resultado_siscan'] = row[i];
+                } else if (normalizedHeader.includes('laboratorio') && !normalizedHeader.includes('aprovados')) {
+                    obj['resultado_laboratorio'] = row[i];
+                } else if (normalizedHeader.includes('aprovados') && normalizedHeader.includes('laboratorio')) {
+                    obj['aprovados_laboratorio'] = row[i];
+                } else if (normalizedHeader.includes('coleta') && normalizedHeader.includes('dna')) {
+                    obj['coleta_dna_hpv'] = row[i];
+                } else if (normalizedHeader.includes('resultado') && normalizedHeader.includes('dna')) {
+                    obj['resultado_dna_hpv'] = row[i];
+                } else if (normalizedHeader.includes('variavel') && normalizedHeader.includes('2')) {
+                    obj['data_coleta_v2'] = row[i];
+                } else if (normalizedHeader.includes('situacao')) {
+                    obj['status'] = row[i];
+                }
             }
         });
         
         // Gerar ID se não tiver
         if (!obj.id) {
-             obj.id = obj['cns'] || String(Math.random()).slice(2, 10);
+             obj.id = obj['cns'] || `${obj['nome'] || 'paciente'}-${obj['unidade'] || 'unidade'}-${rowIndex + 1}`;
         }
         
         return obj;
@@ -268,6 +387,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     });
 
   } catch (err: any) {
+    console.error('[Pacientes] Erro capturado:', err.message, err.stack);
     return new Response(JSON.stringify({ error: err.message, stack: err.stack }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

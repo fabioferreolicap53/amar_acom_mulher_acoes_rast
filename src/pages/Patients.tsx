@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PatientEditModal from '../components/PatientEditModal';
 import { api } from '../services/api';
 import type { Patient } from '../types';
 
 const Patients = () => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -11,31 +13,72 @@ const Patients = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    const currentUser = api.auth.getUser();
-    if (currentUser) {
-      loadPatients(currentUser.unidade, currentUser.equipe, currentUser.micro_area);
-    } else {
-      // Tratar caso de usuário não logado ou sem dados de unidade
-      setError('Usuário não autenticado ou dados de unidade ausentes.');
-      setLoading(false);
-    }
+    const checkUserAndLoad = async () => {
+        // Tenta obter usuário do cache primeiro
+        let currentUser = api.auth.getUser();
+        console.log('Usuário inicial do cache:', currentUser);
+        
+        // Se não tiver no cache, tenta forçar um refresh se tiver token
+        if (!currentUser && localStorage.getItem('pocketbase_auth')) {
+            try {
+                console.log('Token encontrado no localStorage, tentando recuperar sessão...');
+                // Pequeno delay para garantir que o PocketBase inicializou
+                await new Promise(resolve => setTimeout(resolve, 500));
+                currentUser = api.auth.getUser();
+                console.log('Usuário após recuperação:', currentUser);
+            } catch (e) {
+                console.warn('Falha ao recuperar sessão:', e);
+            }
+        }
+
+        if (currentUser) {
+            setCurrentUser(currentUser);
+            // Se o usuário existe mas não tem unidade vinculada (ex: admin geral ou cadastro incompleto)
+            // Tenta carregar mesmo assim, talvez a API trate isso (retornando tudo ou nada)
+            // Mas para evitar o erro visual, vamos logar o aviso e tentar.
+            if (!currentUser.unidade) {
+                console.warn('Usuário logado sem unidade vinculada:', currentUser);
+            }
+            console.log('Carregando pacientes com unidade:', currentUser.unidade, 'equipe:', currentUser.equipe, 'micro_area:', currentUser.micro_area);
+            loadPatients(currentUser.unidade, currentUser.equipe, currentUser.micro_area);
+        } else {
+            // Se realmente não tiver usuário, redireciona ou mostra erro
+            // Em vez de só mostrar erro, vamos tentar carregar sem filtros (se a API permitir)
+            // ou redirecionar para login se for crítico.
+            console.error('Usuário não encontrado no contexto. Redirecionando...');
+            // navigate('/login'); // Opcional: forçar login
+            setError('Sessão expirada. Por favor, faça login novamente.');
+            setLoading(false);
+        }
+    };
+
+    checkUserAndLoad();
   }, []);
 
   const loadPatients = async (unidade?: string, equipe?: string, microArea?: string) => {
     setLoading(true);
     try {
-        const result = await api.patients.list();
+        const filters: any = {};
+        if (unidade) filters.unidade = unidade;
+        if (equipe) filters.equipe = equipe;
+        if (microArea) filters.microArea = microArea;
+        console.log('Chamando api.patients.list com filtros:', filters);
+        const result = await api.patients.list(filters);
+        console.log('Resultado da API:', result);
         // Verifica se o resultado tem a estrutura { data, headers } ou é um array direto
         if (Array.isArray(result)) {
             setPatients(result);
+            if (result.length > 0) console.log('Exemplo de paciente:', result[0]);
         } else {
             setPatients(result.data);
+            if (result.data.length > 0) console.log('Exemplo de paciente:', result.data[0]);
             setHeaders(result.headers || []);
         }
     } catch (err) {
-        console.error(err);
+        console.error('Erro na carga de pacientes:', err);
         setError('Erro ao carregar lista de pacientes.');
     } finally {
         setLoading(false);
@@ -108,19 +151,10 @@ const Patients = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  UNIDADE
-                </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  EQUIPE
-                </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  MICROÁREA
-                </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
                   NOME
                 </th>
                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  CNS
+                  NPRONT / NºSUS
                 </th>
                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
                   DATA DE NASCIMENTO (IDADE)
@@ -143,6 +177,7 @@ const Patients = () => {
                 <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
                   RESULTADO DNA HPV
                 </th>
+
                 <th scope="col" className="relative px-6 py-3 text-center font-calibri">
                   <span className="sr-only">Ações</span>
                 </th>
@@ -152,15 +187,6 @@ const Patients = () => {
               {filteredPatients.length > 0 ? (
                 filteredPatients.map((patient) => (
                 <tr key={patient.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.unidade || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.equipe || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.micro_area || '-'}</div>
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <div className="flex items-center justify-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -177,7 +203,7 @@ const Patients = () => {
                     <div className="text-sm text-gray-900 font-calibri">{patient.cns || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient['dat-nascimento'] || '-'}</div>
+                    <div className="text-sm text-gray-900 font-calibri">{patient['dat-nascimento'] || patient.data_nascimento || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-900 font-calibri">{patient.data_coleta_v2 || '-'}</div>
@@ -197,20 +223,35 @@ const Patients = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-900 font-calibri">{patient.resultado_dna_hpv || '-'}</div>
                   </td>
+
                   <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <button 
-                      onClick={() => handleEdit(patient)}
-                      className="text-blue-600 hover:text-blue-900 font-medium px-3 py-1 rounded-lg hover:bg-blue-50 transition-colors font-calibri"
-                    >
-                      Acompanhar
-                    </button>
+                    <div className="flex justify-center gap-2">
+                        <button 
+                          onClick={() => handleEdit(patient)}
+                          className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
+                          title="Exames"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">science</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                              navigate(`/pacientes/${patient.id}/acompanhamento`, { state: { patient } });
+                          }}
+                          className="text-green-600 hover:text-green-900 hover:bg-green-50 p-1.5 rounded-lg transition-colors"
+                          title="Acompanhamento"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">clinical_notes</span>
+                        </button>
+                    </div>
                   </td>
                 </tr>
               ))
               ) : (
                 <tr>
-                    <td colSpan={13} className="px-6 py-10 text-center text-gray-500">
-                        Nenhum paciente encontrado com este termo de busca.
+                    <td colSpan={10} className="px-6 py-10 text-center text-gray-500">
+                        {patients.length === 0 
+                            ? "Nenhum paciente encontrado na base de dados. Verifique se sua unidade/equipe possui registros."
+                            : "Nenhum paciente encontrado com este termo de busca."}
                     </td>
                 </tr>
               )}

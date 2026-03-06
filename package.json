@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:wrangler": "wrangler pages dev -- npm run dev",
+    "dev:wrangler": "wrangler pages dev functions --persist-to .wrangler/state --log-level none -- npm run dev",
+    "dev:proxy": "set WRANGLER_HOME=./.wrangler/home && wrangler pages dev functions --port 8789 --persist-to .wrangler/state --proxy 5173",
     "deploy": "npm run build && wrangler pages deploy dist",
     "build": "vite build",
     "preview": "vite preview",

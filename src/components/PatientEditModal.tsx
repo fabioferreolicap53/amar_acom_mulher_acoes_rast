@@ -211,23 +211,61 @@ const PatientEditModal: React.FC<PatientEditModalProps> = ({ isOpen, onClose, pa
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.nome || patient?.name}</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-calibri">Nome Completo</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900 font-calibri">{patient?.nome || patient?.name}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
-                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.unidade}</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-calibri">NPRONT / NºSUS</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900 font-calibri">{patient?.cns || '-'}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Equipe</label>
-                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.equipe}</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-calibri">Data de Nascimento</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900 font-calibri">{patient?.['dat-nascimento'] || patient?.data_nascimento || '-'}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Micro Área</label>
-                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900">{patient?.micro_area}</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-calibri">Unidade</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900 font-calibri">{patient?.unidade}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-calibri">Equipe</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900 font-calibri">{patient?.equipe}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-calibri">Micro Área</label>
+                  <div className="p-2 bg-gray-50 rounded-lg text-gray-900 font-calibri">{patient?.micro_area}</div>
+                </div>
+                
+                <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-2">
+                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 font-calibri">Dados de Acompanhamento (Planilha)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1 font-calibri">DATA DA COLETA (VARIÁVEL 2)</label>
+                      <div className="p-2 bg-gray-50 rounded-lg text-sm text-gray-900 font-calibri">{patient?.data_coleta_v2 || '-'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1 font-calibri">DATA DO RESULTADO (RESULTADO SISCAN)</label>
+                      <div className="p-2 bg-gray-50 rounded-lg text-sm text-gray-900 font-calibri">{patient?.resultado_siscan || '-'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1 font-calibri">DATA DO CADASTRO (RESULTADO LABORATÓRIO)</label>
+                      <div className="p-2 bg-gray-50 rounded-lg text-sm text-gray-900 font-calibri">{patient?.resultado_laboratorio || '-'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1 font-calibri">DATA DA COLETA (APROVADOS LABORATÓRIO)</label>
+                      <div className="p-2 bg-gray-50 rounded-lg text-sm text-gray-900 font-calibri">{patient?.aprovados_laboratorio || '-'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1 font-calibri">DATA DA COLETA (DNA HPV)</label>
+                      <div className="p-2 bg-gray-50 rounded-lg text-sm text-gray-900 font-calibri">{patient?.coleta_dna_hpv || '-'}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1 font-calibri">DATA DO RESULTADO (DNA HPV)</label>
+                      <div className="p-2 bg-gray-50 rounded-lg text-sm text-gray-900 font-calibri">{patient?.resultado_dna_hpv || '-'}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <p className="mt-4 text-xs text-gray-400 text-center">Dados sincronizados do Google Sheets. Somente leitura.</p>
+              <p className="mt-6 text-xs text-gray-400 text-center font-calibri">Dados sincronizados do Google Sheets. Somente leitura.</p>
             </div>
           )}
         </div>

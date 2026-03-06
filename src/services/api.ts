@@ -12,7 +12,8 @@ export interface UnidadeData {
 // Coleções
 export const COLLECTIONS = {
   USERS: 'amar_acom_mulher_acoes_rast_usuarios',
-  EXAMES: 'amar_acom_mulher_acoes_rast_registros_exames'
+  EXAMES: 'amar_acom_mulher_acoes_rast_registros_exames',
+  FOLLOW_UPS: 'amar_acom_mulher_acoes_rast_acompanhamentos'
 };
 
 /**
@@ -181,6 +182,39 @@ export const api = {
             filter: `patient_id="${patientId}"`,
             sort: '-created'
         });
+    }
+  },
+  followUps: {
+    create: async (data: any) => {
+        return await pb.collection(COLLECTIONS.FOLLOW_UPS).create(data);
+    },
+    listByPatient: async (patientId: string) => {
+        return await pb.collection(COLLECTIONS.FOLLOW_UPS).getList(1, 50, {
+            filter: `patient_id="${patientId}"`,
+            sort: '-data_contato'
+        });
+    },
+    list: async (page = 1, perPage = 50, filters: any = {}) => {
+        const filterStr = Object.entries(filters)
+            .filter(([_, v]) => v)
+            .map(([k, v]) => {
+                if (k === 'data_inicio') return `data_contato >= "${v}"`;
+                if (k === 'data_fim') return `data_contato <= "${v}"`;
+                return `${k}="${v}"`;
+            })
+            .join(' && ');
+
+        return await pb.collection(COLLECTIONS.FOLLOW_UPS).getList(page, perPage, {
+            filter: filterStr,
+            sort: '-data_contato',
+            expand: 'patient_id' // Assumindo relação
+        });
+    },
+    delete: async (id: string) => {
+        return await pb.collection(COLLECTIONS.FOLLOW_UPS).delete(id);
+    },
+    update: async (id: string, data: any) => {
+        return await pb.collection(COLLECTIONS.FOLLOW_UPS).update(id, data);
     }
   }
 };

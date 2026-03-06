@@ -5,6 +5,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
+import PatientFollowUp from './pages/PatientFollowUp';
+import FollowUps from './pages/FollowUps';
 import Settings from './pages/Settings';
 import Placeholder from './pages/Placeholder';
 import ForgotPassword from './pages/ForgotPassword';
@@ -30,6 +32,18 @@ function App() {
         <Route path="/pacientes" element={
           <Layout>
             <Patients />
+          </Layout>
+        } />
+        
+        <Route path="/pacientes/:id/acompanhamento" element={
+          <Layout>
+            <PatientFollowUp />
+          </Layout>
+        } />
+
+        <Route path="/acompanhamentos" element={
+          <Layout>
+            <FollowUps />
           </Layout>
         } />
         
