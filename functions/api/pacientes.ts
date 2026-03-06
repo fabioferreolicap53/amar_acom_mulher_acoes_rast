@@ -123,12 +123,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const uMicro = url.searchParams.get('microArea') || user.micro_area || '';
     console.log(`[Pacientes] Filtros - Unidade: ${uUnidade}, Equipe: ${uEquipe}, Micro: ${uMicro}`);
 
+    // Diagnóstico de variáveis de ambiente
+    console.log(`[Pacientes] Env check: Email=${!!env.GOOGLE_SERVICE_ACCOUNT_EMAIL}, Key=${!!env.GOOGLE_PRIVATE_KEY}, Sheet=${!!env.GOOGLE_SHEETS_ID}`);
+
     // 2. Obter dados do Google Sheets
     // Verificação relaxada para permitir que funcione se as variáveis estiverem presentes
-    // mesmo que o valor de PRIVATE_KEY seja apenas o conteúdo (sem headers PEM)
     if (!env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !env.GOOGLE_PRIVATE_KEY || !env.GOOGLE_SHEETS_ID) {
         // MOCK DATA (V2)
-        console.warn('⚠️ Credenciais do Google Sheets ausentes. Retornando dados mockados.');
+        console.warn('⚠️ Credenciais do Google Sheets ausentes. Retornando dados mockados. Configure GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY e GOOGLE_SHEETS_ID no painel do Cloudflare Pages.');
         const mockData = [
             { 
                 id: '123', 

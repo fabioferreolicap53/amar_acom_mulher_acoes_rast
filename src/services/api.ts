@@ -135,21 +135,29 @@ export const api = {
                 'Authorization': token
             }
           });
-          if (!response.ok) throw new Error('Falha ao carregar pacientes');
+          if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Erro API (${response.status}): ${errorText}`);
+          }
           return await response.json();
       } catch (e) {
           console.error('Erro na API:', e);
-          // Fallback mockado para desenvolvimento (V2)
-          return {
-              data: [
-                { id: '123', nome: 'Maria Silva', unidade: 'UBS Central', equipe: '110', micro_area: '01', data_nascimento: '1980-05-12', telefone: '(11) 99999-1111', exame_a: '2024-01-01', status: 'pendente' },
-                { id: '124', nome: 'Joana Souza', unidade: 'UBS Norte', equipe: '110', micro_area: '02', data_nascimento: '1992-08-23', telefone: '(11) 99999-2222', exame_a: '2024-02-01', status: 'ok' },
-                { id: '125', nome: 'Ana Costa', unidade: 'UBS Sul', equipe: '111', micro_area: '01', data_nascimento: '1975-11-30', telefone: '(11) 99999-3333', exame_a: '2024-03-01', status: 'pendente' },
-                { id: '126', nome: 'Clara Mendes', unidade: 'UBS Leste', equipe: '112', micro_area: '03', data_nascimento: '1985-04-15', telefone: '(11) 99999-4444', exame_a: '2024-04-15', status: 'pendente' },
-                { id: '127', nome: 'Beatriz Oliveira', unidade: 'UBS Central', equipe: '110', micro_area: '01', data_nascimento: '1990-05-20', telefone: '(11) 99999-5555', exame_a: '2024-05-20', status: 'ok' }
-              ] as Patient[],
-              headers: ['Nome Completo', 'Unidade de Saúde', 'Equipe', 'Micro Área', 'Data de Nascimento', 'Telefone', 'Data Coleta', 'Situação']
-          };
+          
+          // Fallback para desenvolvimento local se o backend não estiver rodando
+          if (import.meta.env.DEV) {
+              console.warn('⚠️ API indisponível. Usando dados mockados locais.');
+              return {
+                  data: [
+                    { id: '123', nome: 'Maria Silva', unidade: 'UBS Central', equipe: '110', micro_area: '01', data_nascimento: '1980-05-12', telefone: '(11) 99999-1111', exame_a: '2024-01-01', status: 'pendente' },
+                    { id: '124', nome: 'Joana Souza', unidade: 'UBS Norte', equipe: '110', micro_area: '02', data_nascimento: '1992-08-23', telefone: '(11) 99999-2222', exame_a: '2024-02-01', status: 'ok' },
+                    { id: '125', nome: 'Ana Costa', unidade: 'UBS Sul', equipe: '111', micro_area: '01', data_nascimento: '1975-11-30', telefone: '(11) 99999-3333', exame_a: '2024-03-01', status: 'pendente' },
+                    { id: '126', nome: 'Clara Mendes', unidade: 'UBS Leste', equipe: '112', micro_area: '03', data_nascimento: '1985-04-15', telefone: '(11) 99999-4444', exame_a: '2024-04-15', status: 'pendente' },
+                    { id: '127', nome: 'Beatriz Oliveira', unidade: 'UBS Central', equipe: '110', micro_area: '01', data_nascimento: '1990-05-20', telefone: '(11) 99999-5555', exame_a: '2024-05-20', status: 'ok' }
+                  ] as Patient[],
+                  headers: ['Nome Completo', 'Unidade de Saúde', 'Equipe', 'Micro Área', 'Data de Nascimento', 'Telefone', 'Data Coleta', 'Situação']
+              };
+          }
+          throw e;
       }
     }
   },

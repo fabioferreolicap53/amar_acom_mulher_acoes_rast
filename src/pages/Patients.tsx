@@ -150,35 +150,34 @@ const Patients = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[250px]">
                   NOME
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[120px]">
                   NPRONT / NºSUS
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  DATA DE NASCIMENTO (IDADE)
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[100px]">
+                  NASCIMENTO
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  VARIÁVEL 2 (DATA DA COLETA)
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[100px]">
+                  DATA COLETA
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  RESULTADO SISCAN (DATA DO RESULTADO)
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[150px]">
+                  RES. SISCAN
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  RESULTADO LABORATÓRIO (DATA DO CADASTRO)
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[150px]">
+                  RES. LABORATÓRIO
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  APROVADOS LABORATÓRIO(DATA DA COLETA)
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[150px]">
+                  APROVADOS LAB.
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  COLETA DNA HPV
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[120px]">
+                  COLETA DNA
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider font-calibri">
-                  RESULTADO DNA HPV
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider font-calibri min-w-[120px]">
+                  RES. DNA
                 </th>
-
-                <th scope="col" className="relative px-6 py-3 text-center font-calibri">
+                <th scope="col" className="relative px-4 py-3 text-center font-calibri min-w-[100px]">
                   <span className="sr-only">Ações</span>
                 </th>
               </tr>
@@ -187,44 +186,44 @@ const Patients = () => {
               {filteredPatients.length > 0 ? (
                 filteredPatients.map((patient) => (
                 <tr key={patient.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex items-center justify-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm font-calibri">
+                  <td className="px-4 py-3 whitespace-normal text-left">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-8 w-8">
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs font-calibri">
                           {(patient.nome || patient.name || '?').charAt(0)}
                         </div>
                       </div>
-                      <div className="ml-4 text-left">
-                        <div className="text-sm font-medium text-gray-900 font-calibri">{patient.nome || patient.name || '-'}</div>
+                      <div className="ml-3 text-left">
+                        <div className="text-sm font-medium text-gray-900 font-calibri leading-tight">{patient.nome || patient.name || '-'}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-900 font-calibri">{patient.cns || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-900 font-calibri">{patient['dat-nascimento'] || patient.data_nascimento || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-900 font-calibri">{patient.data_coleta_v2 || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.resultado_siscan || '-'}</div>
+                  <td className="px-4 py-3 whitespace-normal text-center">
+                    <div className="text-xs text-gray-900 font-calibri leading-tight">{patient.resultado_siscan || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.resultado_laboratorio || '-'}</div>
+                  <td className="px-4 py-3 whitespace-normal text-center">
+                    <div className="text-xs text-gray-900 font-calibri leading-tight">{patient.resultado_laboratorio || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.aprovados_laboratorio || '-'}</div>
+                  <td className="px-4 py-3 whitespace-normal text-center">
+                    <div className="text-xs text-gray-900 font-calibri leading-tight">{patient.aprovados_laboratorio || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.coleta_dna_hpv || '-'}</div>
+                  <td className="px-4 py-3 whitespace-normal text-center">
+                    <div className="text-xs text-gray-900 font-calibri leading-tight">{patient.coleta_dna_hpv || '-'}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm text-gray-900 font-calibri">{patient.resultado_dna_hpv || '-'}</div>
+                  <td className="px-4 py-3 whitespace-normal text-center">
+                    <div className="text-xs text-gray-900 font-calibri leading-tight">{patient.resultado_dna_hpv || '-'}</div>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
                     <div className="flex justify-center gap-2">
                         <button 
                           onClick={() => handleEdit(patient)}
